@@ -18,8 +18,8 @@ jobs:
         language: [python, go]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - uses: github/codeql-action/init@45580472a5bb82c4681c4ac726cfdb60060c2ee1  # v3
+      - uses: github/codeql-action/init@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v3
         with:
           languages: ${{ matrix.language }}
-      - uses: github/codeql-action/autobuild@45580472a5bb82c4681c4ac726cfdb60060c2ee1  # v3
-      - uses: github/codeql-action/analyze@45580472a5bb82c4681c4ac726cfdb60060c2ee1  # v3
+      - uses: github/codeql-action/autobuild@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v3
+      - uses: github/codeql-action/analyze@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v3
