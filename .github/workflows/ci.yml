@@ -35,6 +35,9 @@ jobs:
           print('schema ok')
           "
 
+      - name: Run schema conformance tests
+        run: python3 validators/test_schema.py
+
       - name: Check spec version is consistent across spec and validators
         run: |
           python3 - <<'EOF'

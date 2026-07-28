@@ -355,31 +355,37 @@ See `examples/` for complete rendered examples.
 
 ### 5.2 Required Fields
 
+Field names below are **full JSON paths from the document root**. Fields under `report.*` describe the run; the root holds the envelope. Implementations MUST place fields at the stated path — a provenance field written at the wrong depth is not present, and a conformance claim that depends on it will silently fail to be enforced.
+
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `shadow_score_spec_version` | string | ✅ | Spec version this report conforms to |
-| `shadow_score` | number | ✅ | The computed Shadow Score (0–100) |
-| `level` | string | ✅ | One of: `perfect`, `minor`, `moderate`, `significant`, `critical` |
+| `report.shadow_score` | number | ✅ | The computed Shadow Score (0–100) |
+| `report.level` | string | ✅ | One of: `perfect`, `minor`, `moderate`, `significant`, `critical` |
 | `sealed_tests.total` | integer | ✅ | Total sealed tests run |
 | `sealed_tests.passed` | integer | ✅ | Sealed tests that passed |
 | `sealed_tests.failed` | integer | ✅ | Sealed tests that failed |
 | `failures` | array | ✅ | List of failure objects (test_name, expected, actual, message) |
-| `independence` | string | ✅ at Level 4 | `strong` or `weak` (§3.6.1) |
-| `seal_author_families` | array | ✅ at Level 4 | Model families that authored the sealed suites |
-| `implementer_family` | string | ✅ at Level 4 | Model family that authored the implementation |
-| `conformance_level` | integer | RECOMMENDED | Highest level claimed (1–4) |
-| `advisory` | boolean | ✅ if `true` | Set when the score is not authoritative (§5.4) |
-| `advisory_reason` | string | ✅ if `advisory` | Why the score is not authoritative |
-| `sealed_hash` | string | RECOMMENDED | SHA-256 hash of sealed test directory |
-| `seal_broken` | boolean | RECOMMENDED | True if tamper evidence or a canary indicates the seal was read or modified |
-| `workspace_isolation` | string | RECOMMENDED | `strict` (disposable workspace) or `legacy` (§4.3) |
-| `spec_ambiguity` | number | ✅ if plurality used | Contradiction ratio (§4.6.2) |
+| `report.independence` | string | ✅ at Level 4 | `strong` or `weak` (§3.6.1) |
+| `report.seal_author_families` | array | ✅ at Level 4 | Model families that authored the sealed suites |
+| `report.implementer_family` | string | ✅ at Level 4 | Model family that authored the implementation |
+| `report.conformance_level` | integer | RECOMMENDED | Highest level claimed (1–4) |
+| `report.advisory` | boolean | ✅ if `true` | Set when the score is not authoritative (§5.4) |
+| `report.advisory_reason` | string | ✅ if `advisory` | Why the score is not authoritative |
+| `report.sealed_hash` | string | RECOMMENDED | SHA-256 hash of sealed test directory |
+| `report.seal_broken` | boolean | RECOMMENDED | True if tamper evidence or a canary indicates the seal was read or modified |
+| `report.workspace_isolation` | string | RECOMMENDED | `strict` (disposable workspace) or `legacy` (§4.3) |
+| `report.seal_author_models` | array | RECOMMENDED | Specific models that authored the sealed suites |
+| `report.implementer_model` | string | RECOMMENDED | Specific model that authored the implementation |
+| `report.spec_ambiguity` | number | ✅ if plurality used | Contradiction ratio (§4.6.2) |
 | `hardening.initial_shadow_score` | number | ✅ at Level 3 | Score before the first hardening cycle |
 | `hardening.cycles_completed` | integer | ✅ at Level 3 | Number of hardening cycles run |
 | `hardening.hardening_velocity` | number | ✅ at Level 3 | Points recovered per cycle (§3.5) |
 | `hardening.max_reveal` | string | RECOMMENDED | Highest disclosure level reached (§4.4.1) |
 | `open_tests.*` | object | RECOMMENDED | Open test results for comparison |
 | `coverage_comparison` | object | OPTIONAL | Category-level breakdown |
+
+Implementations MAY add fields not listed here. They MUST NOT rename a listed field, and MUST NOT emit `report.seal_families` — an early spelling of `report.seal_author_families` that the reference schema rejects, because a validator that silently ignores an unrecognised provenance field will report a Level 4 claim it never actually checked.
 
 **Provenance is not optional metadata.** A Shadow Score without `independence` and family provenance cannot be interpreted: 0% under `strong` independence and 0% under `weak` independence are different claims about the world, and only one of them is evidence.
 
@@ -587,9 +593,12 @@ A: Yes. Any team practicing independent verification and validation (IV&V) can b
 - §5.4 Advisory Reports — when a score MUST be marked non-authoritative
 - **Level 4 — Adversarial Independence** conformance level
 - Canary-based seal reconnaissance detection (§4.5)
-- Report fields: `independence`, `seal_author_families`, `implementer_family`, `conformance_level`, `advisory`, `advisory_reason`, `seal_broken`, `workspace_isolation`, `spec_ambiguity`, `hardening.hardening_velocity`, `hardening.max_reveal`
+- Report fields: `independence`, `seal_author_families`, `implementer_family`, `conformance_level`, `advisory`, `advisory_reason`, `seal_broken`, `workspace_isolation`, `spec_ambiguity`, `hardening.hardening_velocity`, `hardening.max_reveal`, `seal_author_models`, `implementer_model`
 
 **Changed**
+- §5.2 field names are now given as **full JSON paths**. v1.0.0 mixed dotted paths (`sealed_tests.total`) with bare names (`shadow_score`), leaving it ambiguous whether a field belonged at the root or under `report`. The reference implementation drifted on exactly this, and the resulting report still validated — the misplaced field was invisible to the Level 4 conditional, so the conformance claim passed unchecked. The reference schema now rejects misplaced provenance and the superseded `seal_families` spelling by name.
+- A schema that silently ignores an unrecognised provenance field will report a conformance level it never verified. Provenance fields are therefore rejected on misspelling, not skipped.
+- §5.4 advisory conditions are now machine-enforced: `independence: weak` and `seal_broken: true` require `advisory: true` with a reason.
 - §4.3 validation now uses a **disposable verification workspace**; the v1.0.0 copy-in procedure is retained as `workspace_isolation: "legacy"` for single-shot validators
 - §3.5 Hardening Velocity given an explicit formula; §4.4 requires recording `initial_shadow_score` before cycle 1, which Level 3 previously required but left uncomputable
 - §4.2 isolation mechanisms now rank **topological** isolation above process isolation, with a note that context isolation is insufficient for agents holding unscoped filesystem tools

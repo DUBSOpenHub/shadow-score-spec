@@ -5,6 +5,30 @@
   "type": "object",
   "required": ["shadow_score_spec_version", "report", "sealed_tests", "failures"],
   "properties": {
+    "conformance_level": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.conformance_level (SPEC.md section 5.2). At the root it is invisible to the Level 4 conditional, so an unchecked conformance claim would pass silently."
+    },
+    "independence": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.independence (SPEC.md section 5.2)"
+    },
+    "implementer_family": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.implementer_family (SPEC.md section 5.2)"
+    },
+    "seal_author_families": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.seal_author_families (SPEC.md section 5.2)"
+    },
+    "shadow_score": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.shadow_score (SPEC.md section 5.2)"
+    },
+    "advisory": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.advisory (SPEC.md section 5.4)"
+    },
     "shadow_score_spec_version": {
       "type": "string",
       "description": "Version of the Shadow Score Spec this report conforms to",
@@ -68,6 +92,16 @@
           "uniqueItems": true,
           "description": "Model families that authored the sealed suites. Required at Level 4."
         },
+        "seal_author_models": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Specific models that authored the sealed suites"
+        },
+        "implementer_model": {
+          "type": "string",
+          "description": "Specific model that authored the implementation"
+        },
         "workspace_isolation": {
           "type": "string",
           "enum": ["strict", "legacy"],
@@ -103,6 +137,36 @@
           },
           "then": {
             "required": ["independence", "implementer_family", "seal_author_families"]
+          }
+        },
+        {
+          "properties": {
+            "seal_families": {
+              "not": {},
+              "description": "RENAMED: use seal_author_families. Rejected rather than ignored, because a silently-dropped provenance field yields a Level 4 claim that was never checked."
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "independence": { "const": "weak" } },
+            "required": ["independence"]
+          },
+          "then": {
+            "properties": { "advisory": { "const": true } },
+            "required": ["advisory", "advisory_reason"],
+            "$comment": "SPEC.md section 5.4 — weak independence MUST be reported as advisory."
+          }
+        },
+        {
+          "if": {
+            "properties": { "seal_broken": { "const": true } },
+            "required": ["seal_broken"]
+          },
+          "then": {
+            "properties": { "advisory": { "const": true } },
+            "required": ["advisory", "advisory_reason"],
+            "$comment": "SPEC.md section 5.4 — a broken seal makes the score unfalsifiable."
           }
         }
       ]
