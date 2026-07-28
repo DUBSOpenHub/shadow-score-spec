@@ -170,3 +170,9 @@ Shadow Score is an open specification. Contributions welcome:
 ## License
 
 [MIT](LICENSE) © 2026 DUBSOpenHub
+
+---
+
+🐙 Created with 💜 by [@DUBSOpenHub](https://github.com/DUBSOpenHub) with the [GitHub Copilot CLI](https://docs.github.com/copilot/concepts/agents/about-copilot-cli).
+
+Let's build! 🚀✨
