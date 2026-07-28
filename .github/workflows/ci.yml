@@ -19,8 +19,79 @@ jobs:
       - name: Run Python validator tests
         run: cd validators && python -m unittest test_shadow_score -v
 
+      - name: Run conformance suite (Python validator)
+        run: python3 tests/conformance/run_conformance.py -v
+
       - name: Validate JSON schema syntax
         run: python -c "import json; json.load(open('validators/shadow-report-schema.json'))"
+
+      - name: Validate schema is a well-formed Draft-07 schema
+        run: |
+          pip install --quiet jsonschema
+          python -c "
+          import json
+          from jsonschema import Draft7Validator
+          Draft7Validator.check_schema(json.load(open('validators/shadow-report-schema.json')))
+          print('schema ok')
+          "
+
+      - name: Check spec version is consistent across spec and validators
+        run: |
+          python3 - <<'EOF'
+          import re, sys, pathlib
+          spec = pathlib.Path('SPEC.md').read_text()
+          m = re.search(r'\*\*Version:\*\*\s*([0-9]+\.[0-9]+\.[0-9]+)', spec)
+          if not m:
+              sys.exit('could not find version header in SPEC.md')
+          want = m.group(1)
+          checks = {
+              'validators/shadow-score.py': r'SPEC_VERSION = "([^"]+)"',
+              'validators/shadow-score.sh': r'SPEC_VERSION="([^"]+)"',
+              'validators/shadow-score.go': r'const specVersion = "([^"]+)"',
+          }
+          bad = False
+          for path, pat in checks.items():
+              got = re.search(pat, pathlib.Path(path).read_text())
+              got = got.group(1) if got else None
+              flag = 'ok ' if got == want else 'FAIL'
+              if got != want:
+                  bad = True
+              print(f'  {flag} {path}: {got} (spec: {want})')
+          sys.exit(1 if bad else 0)
+          EOF
+
+      - name: Check for stale gap-score naming
+        run: |
+          if grep -rn "gap_score\|gap-score\|Gap Report\|Gap Score" \
+               --include="*.md" --include="*.py" --include="*.json" \
+               --include="*.go" --include="*.sh" --include="*.yml" . \
+             | grep -v "minor-gaps\|critical-gaps" \
+             | grep -v "renamed to" \
+             | grep -v "^\./\.github/workflows/ci\.yml:" ; then
+            echo "::error::Stale gap-score naming found (renamed to shadow-score in v2.0.0)"
+            exit 1
+          fi
+          echo "no stale naming"
+
+      - name: Check all referenced repo files exist
+        run: |
+          python3 - <<'EOF'
+          import re, pathlib, sys
+          bad = False
+          for md in pathlib.Path('.').rglob('*.md'):
+              if '.git' in md.parts:
+                  continue
+              for link in re.findall(r'\]\(([^)#][^)]*)\)', md.read_text()):
+                  link = link.split('#')[0].strip()
+                  if not link or link.startswith(('http://', 'https://', 'mailto:')):
+                      continue
+                  target = (md.parent / link).resolve()
+                  if not target.exists():
+                      print(f'  FAIL {md}: broken link -> {link}')
+                      bad = True
+          print('link check done')
+          sys.exit(1 if bad else 0)
+          EOF
 
       - name: Validate example JSON files
         run: |

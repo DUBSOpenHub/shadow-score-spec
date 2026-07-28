@@ -1,8 +1,8 @@
 # Shadow Score Specification
 
-**Version:** 1.0.0  
+**Version:** 2.0.0  
 **Status:** Draft  
-**Date:** 2026-02-24  
+**Date:** 2026-07-28  
 **Authors:** DUBSOpenHub  
 **License:** MIT  
 
@@ -56,6 +56,8 @@ Shadow Score introduces an **independent, adversarial quality signal** by separa
 
 In an AI agent pipeline, each role is typically a separate agent invocation with isolated context. In a human workflow, roles may be assigned to different team members.
 
+Roles are also constrained by **authorship independence** (§3.6), which governs *who* — or *which model* — may occupy two roles at once.
+
 ### 3.2 Test Suites
 
 - **Sealed Tests** (`S`): Tests generated from the specification before any implementation exists. These tests are hidden from the Implementer. They validate *requirements*, not *implementation details*.
@@ -89,7 +91,42 @@ These optional metrics provide additional context alongside the primary Shadow S
 
 - **Coverage Delta**: `|sealed_categories_tested - open_categories_tested|` — measures how many *types* of scenarios (happy path, edge case, error handling, security) differ between suites.
 - **Overlap Ratio**: `matching_scenarios / St` — measures how many sealed test scenarios the Implementer independently anticipated.
-- **Hardening Velocity**: `gap_reduction_per_cycle` — measures how quickly the Shadow Score decreases during iterative fixing.
+- **Hardening Velocity**: `(initial_shadow_score - final_shadow_score) / cycles_completed` — Shadow Score points recovered per hardening cycle. Computing it REQUIRES recording `initial_shadow_score` *before* the first hardening cycle; implementations that store only the final score cannot claim Level 3.
+- **Spec Ambiguity**: `contradicting_acceptance_criteria / total_acceptance_criteria` — see §4.6. Defined only when seal plurality is used.
+
+### 3.6 Authorship Independence
+
+> A Shadow Score is only meaningful if the tests and the code come from **different minds**.
+
+§4.2 governs *information* isolation: it answers **"can the Implementer see the sealed tests?"** It does not answer **"does the Implementer think like the Seal Author?"**
+
+When the Seal Author and the Implementer are two instances of the same AI model — or the same model family — they share training data, reasoning priors, and therefore **failure modes**. If the family does not think to test a scenario, it also does not think to handle it. The sealed test is never written, the implementation is never hardened, the Shadow Score reads 0%, and the defect ships unflagged.
+
+**This bias is not random. It is directional: it always pushes the Shadow Score toward 0%.** A perfectly isolated pipeline built entirely on one model family systematically *overclaims* quality, and does so most confidently on exactly the requirements neither side considered.
+
+#### 3.6.1 Independence classes
+
+| Class | Definition |
+|-------|-----------|
+| `strong` | Seal Author and Implementer are different model families (or different humans/teams with no shared authorship) |
+| `weak` | Seal Author and Implementer share a model family, or are the same agent |
+
+A Shadow Score produced under `weak` independence MUST be reported as **advisory** and MUST NOT be presented as authoritative (§5.4).
+
+#### 3.6.2 Bias direction by role pair
+
+Not every shared assignment is equally harmful. What matters is the direction in which the resulting bias moves the score.
+
+| Role pair | Effect on Shadow Score | Verdict |
+|-----------|-----------------------|---------|
+| Seal Author == Implementer | Too **low** — overclaims quality | ❌ MUST NOT |
+| Specifier == Implementer | Too **low** — the Implementer infers the Specifier's unstated assumptions | ❌ MUST NOT |
+| Specifier == Seal Author | Too **high** — the Seal Author infers them instead | ⚠️ MAY, MUST be disclosed |
+| Validator == anyone | No effect — the Validator executes, it does not author | ✅ MAY |
+
+A pairing that biases the score *upward* is conservative: it penalises the Implementer for requirements that were never stated, which is a visible, correctable error. A pairing that biases it *downward* hides defects, which is not.
+
+Blanket "all roles must differ" rules miss this distinction and impose cost where there is no risk.
 
 ---
 
@@ -115,7 +152,7 @@ Requirements:
 
 ### 4.2 Information Isolation
 
-This is the **critical invariant** of the protocol. Breaking isolation invalidates the Shadow Score.
+This is the **first critical invariant** of the protocol. Breaking it invalidates the Shadow Score. The second is authorship independence (§4.2.1).
 
 | Phase | Seal Author Sees | Implementer Sees | Validator Sees |
 |-------|-----------------|------------------|---------------|
@@ -125,18 +162,33 @@ This is the **critical invariant** of the protocol. Breaking isolation invalidat
 | Hardening | — | Failure messages ONLY | Code, All Tests |
 
 **Isolation mechanisms** (in order of strength):
-1. **Process isolation**: Separate OS processes with no shared filesystem access (strongest)
-2. **Context isolation**: Separate AI agent invocations with no shared context (recommended for AI pipelines)
-3. **Role isolation**: Different humans/teams with access controls (acceptable for human workflows)
-4. **Honor system**: Trust-based separation (weakest — not recommended for conformance claims)
+1. **Topological isolation**: Sealed tests are stored outside any directory the Implementer can reach, and are never written into its workspace at any point (strongest — see §4.3)
+2. **Process isolation**: Separate OS processes with no shared filesystem access
+3. **Context isolation**: Separate AI agent invocations with no shared context (minimum for AI pipelines)
+4. **Role isolation**: Different humans/teams with access controls (acceptable for human workflows)
+5. **Honor system**: Trust-based separation (weakest — not recommended for conformance claims)
+
+> **Note on agent tooling.** Context isolation alone is insufficient when the Implementer has unscoped filesystem tools (`bash`, `grep`, `glob`). Prompt instructions not to read a directory are not an access control. If the Implementer *can* reach the sealed tests, isolation depends on its compliance, and a Shadow Score that depends on the Implementer's good behaviour measures nothing.
+
+#### 4.2.1 Authorship Independence
+
+Implementations claiming Level 4 (§6) MUST enforce, before any agent is dispatched:
+
+1. The Seal Author and the Implementer are of **different model families** (§3.6.1)
+2. The Specifier is not of the Implementer's family
+3. Where the roles exist, no reviewer shares a family with the party it reviews (e.g. an architecture critic and the architect; a security reviewer and the Implementer)
+
+Violations MUST either abort the run or force the report to advisory status (§5.4). Silently emitting a score known to be biased is a conformance failure.
+
+**Family assignment** is implementation-defined but MUST be declared, and MUST group models that share pretraining lineage. Two checkpoints of the same base model are the same family regardless of version or size.
 
 ### 4.3 Validation
 
 **Input:** Implementation code, sealed tests, open tests.  
-**Output:** Gap Report (see §5).
+**Output:** Shadow Report (see §5).
 
 Procedure:
-1. Copy sealed tests into the implementation workspace
+1. Construct a **disposable verification workspace** from the Implementer's committed output, and place the sealed tests there — never in the Implementer's own workspace
 2. Install dependencies and build the project
 3. Run sealed tests using the appropriate test runner
 4. Run open tests using the appropriate test runner
@@ -144,20 +196,41 @@ Procedure:
 6. Record: total open tests, passed, failed
 7. Compute Shadow Score: `(sealed_failures / sealed_total) × 100`
 8. Categorize failures by type (happy path, edge case, error handling, security)
-9. Produce Gap Report
+9. Destroy the verification workspace
+10. Produce the Shadow Report
+
+> **Changed in 2.0.0.** v1.0.0 step 1 read *"copy sealed tests into the implementation workspace"*. That is safe only when validation is terminal. In a hardening loop (§4.4) the Implementer is re-invoked **after** validation, and the sealed tests are by then sitting in a directory it can read. Implementations that harden MUST use a disposable workspace. Implementations that validate exactly once MAY use the v1.0.0 copy-in/delete-after procedure and MUST declare `workspace_isolation: "legacy"` in the report.
 
 ### 4.4 Hardening
 
 When Shadow Score > 0%, the Implementer may fix the code iteratively. The hardening loop preserves information isolation:
 
-1. Extract from the Gap Report: test name, expected result, actual result, failure message
-2. **Do NOT** share the sealed test source code with the Implementer
-3. The Implementer fixes the implementation based on failure descriptions only
-4. Re-run validation (§4.3)
-5. Repeat up to a configured maximum number of cycles
-6. If Shadow Score remains > 0% after max cycles, escalate to human review
+1. Record `initial_shadow_score` **before** the first cycle — it cannot be reconstructed later, and Hardening Velocity (§3.5) is undefined without it
+2. Extract from the Shadow Report: test name, expected result, actual result, failure message
+3. **Do NOT** share the sealed test source code with the Implementer
+4. The Implementer fixes the implementation based on failure descriptions only
+5. Re-run validation (§4.3)
+6. Repeat up to a configured maximum number of cycles
+7. If Shadow Score remains > 0% after max cycles, escalate to human review
 
 **Rationale:** Sharing only failure messages (not test code) forces the Implementer to fix the *root cause* rather than pattern-match against specific test assertions.
+
+#### 4.4.1 Progressive Disclosure
+
+Implementations MAY define disclosure levels that increase across hardening cycles. No level may include sealed test **source**.
+
+| Level | Discloses | Notes |
+|-------|-----------|-------|
+| `failure_messages` | Test name, expected, actual, message | Default. The v1.0.0 behaviour. |
+| `assertions` | The above, plus the text of the failing assertion | MAY be used at the final cycle only |
+
+Disclosure escalation converts an unbounded guess into a solvable problem when an Implementer has stalled, without revealing the test body that would enable pattern-matching. The disclosure level reached MUST be recorded in the report.
+
+#### 4.4.2 Escalation independence
+
+If an implementation escalates by changing the Implementer's model between cycles, the replacement MUST NOT belong to a Seal Author's family (§4.2.1). Escalating into the Seal Author's family reproduces teach-to-test through model correlation rather than through visibility — the exact failure §3.6 exists to prevent.
+
+**A flat hardening velocity across cycles is itself a signal.** An Implementer that fails the same test for a *different reason* each cycle is guessing, not converging, and the defect is more likely in the specification than in the code.
 
 ### 4.5 Tamper Evidence
 
@@ -173,26 +246,67 @@ To ensure sealed tests are not modified after generation:
 find <sealed_dir> -type f | sort | xargs shasum -a 256 | shasum -a 256
 ```
 
+Implementations SHOULD additionally place a **canary** file inside the sealed directory whose access time is recorded at seal generation. A change in its access time before validation indicates the seal was read, not merely that it was unmodified — a hash detects tampering, but not reconnaissance.
+
+### 4.6 Seal Plurality
+
+Implementations MAY generate `N > 1` sealed suites, each authored **independently** from the same specification by a different model family. The suites are then merged into a single envelope for validation.
+
+Plurality answers a question a single suite structurally cannot:
+
+> One sealed suite tells you whether the **implementation** is right.
+> Two independent sealed suites tell you whether the **specification** is right.
+
+#### 4.6.1 Contradiction vs Divergence
+
+|  | Definition | Counts toward Spec Ambiguity |
+|---|-----------|------------------------------|
+| **Contradiction** | Two suites assert on the same behaviour, incompatibly | ✅ Yes |
+| **Divergence** | One suite tests a behaviour the other did not | ❌ No |
+
+Divergence is the expected, desirable result of two authors with different instincts, and is the coverage dividend that motivates plurality. Only a **contradiction** demonstrates ambiguity: both authors read the same words and reached opposite conclusions about required behaviour.
+
+#### 4.6.2 Spec Ambiguity
+
+```
+spec_ambiguity = contradicting_acceptance_criteria / total_acceptance_criteria
+```
+
+This is a measure of **specification quality**, not test quality. A high value means the specification supports materially different implementations — the code will be correct against one reading and wrong against another, and no Shadow Score can tell you which.
+
+Implementations MAY gate on this value and halt before implementation begins. Detecting an ambiguous requirement before code exists is strictly cheaper than detecting it through a failing sealed test afterwards.
+
+#### 4.6.3 Disclosure boundary
+
+Any ambiguity report shared with the Implementer MUST describe disputed **behaviours** only. It MUST NOT contain test source, test names, assertion values, fixtures, or per-criterion test counts. Leaking the suite through the ambiguity report breaks the envelope as surely as leaking it directly.
+
 ---
 
 ## 5. Reporting Format
 
-### 5.1 Gap Report Structure
+### 5.1 Shadow Report Structure
 
-Implementations SHOULD produce a Gap Report in at least one of these formats:
+Implementations SHOULD produce a Shadow Report in at least one of these formats:
 
 #### JSON Format (machine-readable)
 
 ```json
 {
-  "shadow_score_spec_version": "1.0.0",
+  "shadow_score_spec_version": "2.0.0",
   "report": {
     "id": "run-20260224-1200",
     "timestamp": "2026-02-24T12:00:00Z",
     "specification": "PRD.md",
     "shadow_score": 11.1,
     "level": "minor",
-    "sealed_hash": "sha256:a1b2c3d4..."
+    "conformance_level": 4,
+    "independence": "strong",
+    "implementer_family": "anthropic",
+    "seal_author_families": ["openai", "google"],
+    "workspace_isolation": "strict",
+    "spec_ambiguity": 0.0,
+    "sealed_hash": "sha256:a1b2c3d4...",
+    "seal_broken": false
   },
   "sealed_tests": {
     "total": 18,
@@ -250,10 +364,24 @@ See `examples/` for complete rendered examples.
 | `sealed_tests.passed` | integer | ✅ | Sealed tests that passed |
 | `sealed_tests.failed` | integer | ✅ | Sealed tests that failed |
 | `failures` | array | ✅ | List of failure objects (test_name, expected, actual, message) |
+| `independence` | string | ✅ at Level 4 | `strong` or `weak` (§3.6.1) |
+| `seal_author_families` | array | ✅ at Level 4 | Model families that authored the sealed suites |
+| `implementer_family` | string | ✅ at Level 4 | Model family that authored the implementation |
+| `conformance_level` | integer | RECOMMENDED | Highest level claimed (1–4) |
+| `advisory` | boolean | ✅ if `true` | Set when the score is not authoritative (§5.4) |
+| `advisory_reason` | string | ✅ if `advisory` | Why the score is not authoritative |
 | `sealed_hash` | string | RECOMMENDED | SHA-256 hash of sealed test directory |
+| `seal_broken` | boolean | RECOMMENDED | True if tamper evidence or a canary indicates the seal was read or modified |
+| `workspace_isolation` | string | RECOMMENDED | `strict` (disposable workspace) or `legacy` (§4.3) |
+| `spec_ambiguity` | number | ✅ if plurality used | Contradiction ratio (§4.6.2) |
+| `hardening.initial_shadow_score` | number | ✅ at Level 3 | Score before the first hardening cycle |
+| `hardening.cycles_completed` | integer | ✅ at Level 3 | Number of hardening cycles run |
+| `hardening.hardening_velocity` | number | ✅ at Level 3 | Points recovered per cycle (§3.5) |
+| `hardening.max_reveal` | string | RECOMMENDED | Highest disclosure level reached (§4.4.1) |
 | `open_tests.*` | object | RECOMMENDED | Open test results for comparison |
 | `coverage_comparison` | object | OPTIONAL | Category-level breakdown |
-| `hardening` | object | OPTIONAL | Hardening loop metadata |
+
+**Provenance is not optional metadata.** A Shadow Score without `independence` and family provenance cannot be interpreted: 0% under `strong` independence and 0% under `weak` independence are different claims about the world, and only one of them is evidence.
 
 ### 5.3 Failure Categories
 
@@ -266,16 +394,31 @@ Implementations SHOULD categorize each sealed test into one of:
 | `error_handling` | Invalid inputs, missing data, malformed requests |
 | `security` | Injection, overflow, unauthorized access, data leakage |
 
+### 5.4 Advisory Reports
+
+A Shadow Score MUST be marked `advisory: true` when any of the following holds:
+
+| Condition | Reason |
+|-----------|--------|
+| `independence: weak` | Correlated blind spots bias the score toward 0% (§3.6) |
+| `seal_broken: true` | The seal was read or modified; the score is unfalsifiable |
+| The specification was truncated or summarised before reaching the Seal Author or Implementer | The score measures the summariser, not the implementation |
+| Any sealed suite failed to execute | A suite that did not run is not a suite that passed |
+
+Advisory reports MUST carry `advisory_reason` and MUST NOT be presented as a conformant Shadow Score in comparisons, badges, or dashboards.
+
+An honest "this could not be measured" is more useful than a confident wrong number. A 0% advisory score is precisely the case that looks best and means least.
+
 ---
 
 ## 6. Conformance Levels
 
-Implementations may claim conformance at three levels:
+Implementations may claim conformance at four levels. Each level includes all requirements of the levels below it.
 
 ### Level 1 — Shadow Score Computation
 **Requirements:**
 - Computes Shadow Score using the formula in §3.3
-- Produces a Gap Report with all required fields (§5.2)
+- Produces a Shadow Report with all required fields (§5.2)
 - Uses the interpretation scale in §3.4
 
 **Does NOT require:** Sealed-envelope isolation (tests may be authored with knowledge of the implementation).
@@ -296,10 +439,26 @@ Implementations may claim conformance at three levels:
 - All of Level 2
 - Hardening loop (§4.4) is implemented
 - Failure messages shared with Implementer do NOT include test source code
-- Hardening velocity is tracked
+- `initial_shadow_score` is recorded before the first cycle and hardening velocity is reported (§3.5)
 - Shadow Score is recomputed after each hardening cycle
 
 **Use case:** Production-grade autonomous build systems.
+
+### Level 4 — Adversarial Independence
+**Requirements:**
+- All of Level 3
+- Authorship independence (§4.2.1) is enforced **before dispatch**, not merely audited afterwards
+- Seal Author and Implementer are of different model families; a violation aborts the run or forces `advisory: true`
+- Validation uses a disposable verification workspace (§4.3) — sealed tests never enter the Implementer's workspace
+- Hardening escalation never moves the Implementer into a Seal Author's family (§4.4.2)
+- `independence`, `seal_author_families`, and `implementer_family` are reported (§5.2)
+- Advisory conditions (§5.4) are detected and reported
+
+**Seal plurality (§4.6) is RECOMMENDED but not required at Level 4.** Implementations using it MUST report `spec_ambiguity`.
+
+**Use case:** Systems whose Shadow Scores are published, compared across tools, or used as a merge gate.
+
+**Rationale:** Levels 1–3 progressively harden *information* isolation. They are all silently defeated by a single configuration choice — pointing the Seal Author and the Implementer at the same model. Level 4 closes the only remaining channel through which an implementation can be graded by a mind that shares its blind spots.
 
 ---
 
@@ -307,12 +466,15 @@ Implementations may claim conformance at three levels:
 
 The reference implementation of the Shadow Score Specification is **[Dark Factory](https://github.com/DUBSOpenHub/dark-factory)**, an autonomous agentic build system for the GitHub Copilot CLI.
 
-Dark Factory implements **Level 3** conformance:
-- Sealed tests generated by QA Sealed agent from PRD only (§4.1)
-- Context-isolated agents via separate `task()` invocations (§4.2)
-- QA Validator runs both suites and produces Gap Report (§4.3)
-- Hardening loop with failure-message-only feedback (§4.4)
-- SHA-256 hash computed and stored in state.json (§4.5)
+Dark Factory implements **Level 4** conformance:
+- Sealed tests generated by QA Sealed agents from PRD only, from ≥ 2 model families (§4.1, §4.6)
+- Cross-family invariants enforced at Phase 0 with abort-on-violation, and re-checked in CI (§4.2.1)
+- Context-isolated agents via separate `task()` invocations, with the seal vault stored outside the repository (§4.2)
+- Validation in a disposable worktree built from the Implementer's commit (§4.3)
+- Multi-turn hardening with progressive disclosure capped at assertions (§4.4.1) and family-aware escalation (§4.4.2)
+- SHA-256 hash plus canary stored in state.json (§4.5)
+- Spec ambiguity gate before implementation begins (§4.6.2)
+- `SHADOW-REPORT.json` carrying independence provenance and hardening velocity (§5.2)
 
 The reference **Level 2** implementation is **[Terminal Stampede](https://github.com/DUBSOpenHub/terminal-stampede)**, a parallel agent runtime for CLI coding agents.
 
@@ -390,17 +552,49 @@ A: No. It means the code passes all sealed tests. The sealed tests may not cover
 A: Enough to cover every acceptance criterion in the specification, including happy path, edge cases, error handling, and security. As a guideline: 3–5 sealed tests per acceptance criterion.
 
 **Q: Can the Implementer game the system?**  
-A: If information isolation (§4.2) is properly enforced, no. The Implementer cannot see the sealed tests and therefore cannot write code that specifically targets them. If isolation is broken, the Shadow Score is invalid.
+A: If information isolation (§4.2) is properly enforced, it cannot game the system *deliberately*. It can still be advantaged accidentally — see the next question.
+
+**Q: Why does it matter which model writes the sealed tests?**  
+A: Because isolation only stops the Implementer from *seeing* the tests. It does not stop it from *thinking like* the author. Two instances of the same model family share failure modes: if the family doesn't think to test a scenario, it also doesn't think to handle it, so the sealed test is never written and the defect is never caught. The score reads 0% and the bug ships. Crucially, this bias is directional — it always pushes toward 0%, so a same-family pipeline systematically overclaims quality (§3.6).
+
+**Q: Isn't requiring multiple model families expensive and restrictive?**  
+A: It costs one configuration change, and only two roles are actually constrained (§3.6.2). Sharing a model between the Specifier and the Seal Author biases the score *upward*, which is conservative and permitted with disclosure. Only the pairings that hide defects are forbidden. If you genuinely have access to one family only, set `advisory: true` and report the score as non-authoritative rather than claiming Level 4.
+
+**Q: What does seal plurality buy me over one good suite?**  
+A: The ability to grade your *specification*. A single suite can only tell you whether the code matches that suite's reading of the spec. Two independent suites that contradict each other prove the spec supports two different systems — a defect no amount of implementation effort can fix, found before any code is written (§4.6).
+
+**Q: Why did v2.0 stop copying sealed tests into the implementation workspace?**  
+A: Because hardening re-invokes the Implementer *after* validation. Under the v1.0.0 procedure the sealed tests are, by cycle 2, sitting in a directory the Implementer can read — and agents with unscoped shell tools are limited by what they *can* do, not by what the prompt asked them not to do. v2.0 validates in a disposable workspace built from the Implementer's commit (§4.3).
 
 **Q: How does Shadow Score compare to code coverage?**  
 A: Code coverage measures *lines of code executed by tests*. Shadow Score measures *specification requirements satisfied by the implementation*. You can have 100% code coverage and a 50% Shadow Score (the code runs but produces wrong results for half the requirements).
 
 **Q: Is Shadow Score useful for non-AI development?**  
-A: Yes. Any team practicing independent verification and validation (IV&V) can benefit. The concept originates from quality engineering practices used in aerospace, medical devices, and safety-critical systems.
+A: Yes. Any team practicing independent verification and validation (IV&V) can benefit. The concept originates from quality engineering practices used in aerospace, medical devices, and safety-critical systems. Authorship independence (§3.6) has a direct human analogue: don't let the author of a module write its acceptance tests, and don't let their closest collaborator do it either.
 
 ---
 
 ## Appendix C: Changelog
+
+### 2.0.0 (2026-07-28)
+
+**Added**
+- §3.6 Authorship Independence — independence classes (`strong` / `weak`) and the bias-direction table
+- §4.2.1 Authorship Independence enforcement requirements
+- §4.4.1 Progressive Disclosure — bounded escalation that never reveals test source
+- §4.4.2 Escalation independence — model escalation may not enter a Seal Author's family
+- §4.6 Seal Plurality — contradiction vs divergence, and the Spec Ambiguity metric
+- §5.4 Advisory Reports — when a score MUST be marked non-authoritative
+- **Level 4 — Adversarial Independence** conformance level
+- Canary-based seal reconnaissance detection (§4.5)
+- Report fields: `independence`, `seal_author_families`, `implementer_family`, `conformance_level`, `advisory`, `advisory_reason`, `seal_broken`, `workspace_isolation`, `spec_ambiguity`, `hardening.hardening_velocity`, `hardening.max_reveal`
+
+**Changed**
+- §4.3 validation now uses a **disposable verification workspace**; the v1.0.0 copy-in procedure is retained as `workspace_isolation: "legacy"` for single-shot validators
+- §3.5 Hardening Velocity given an explicit formula; §4.4 requires recording `initial_shadow_score` before cycle 1, which Level 3 previously required but left uncomputable
+- §4.2 isolation mechanisms now rank **topological** isolation above process isolation, with a note that context isolation is insufficient for agents holding unscoped filesystem tools
+- §5.2 required fields are now scoped by conformance level
+- "Gap Report" renamed to "Shadow Report" throughout, completing the `gap-score` → `shadow-score` rename
 
 ### 1.0.0 (2026-02-24)
 - Initial specification release

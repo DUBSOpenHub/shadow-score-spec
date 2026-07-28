@@ -303,7 +303,7 @@ class TestOutputFormats(unittest.TestCase):
         fname = self._write_temp(make_sealed_json(4, 0))
         result = run_cli("--sealed", fname)
         report = json.loads(result.stdout)
-        self.assertEqual(report["shadow_score_spec_version"], "1.0.0")
+        self.assertEqual(report["shadow_score_spec_version"], "2.0.0")
 
     def test_json_failures_is_list(self):
         fname = self._write_temp(make_sealed_json(4, 2))

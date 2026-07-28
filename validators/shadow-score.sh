@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shadow Score Reference Validator (Shell)
-# Conforms to Shadow Score Spec v1.0.0
+# Conforms to Shadow Score Spec v2.0.0
 #
 # Usage:
 #   ./shadow-score.sh <sealed_total> <sealed_failed> [threshold]
@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-SPEC_VERSION="1.0.0"
+SPEC_VERSION="2.0.0"
 
 if [ $# -lt 2 ]; then
     echo "Usage: $0 <sealed_total> <sealed_failed> [threshold]"

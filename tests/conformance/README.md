@@ -1,6 +1,6 @@
 # Conformance Test Suite
 
-Black-box conformance tests for Gap Score validators. Any validator implementing the Gap Score Spec v1.0.0 must produce matching output and exit codes for these fixtures.
+Black-box conformance tests for Shadow Score validators. Any validator implementing the Shadow Score Spec v2.0.0 must produce matching output and exit codes for these fixtures.
 
 ## What's Here
 
@@ -23,9 +23,9 @@ Black-box conformance tests for Gap Score validators. Any validator implementing
 python tests/conformance/run_conformance.py -v
 
 # Test the Go validator
-cd validators && go build -o gap-score-go .
+cd validators && go build -o shadow-score-go .
 cd ..
-python tests/conformance/run_conformance.py --validator "./validators/gap-score-go" -v
+python tests/conformance/run_conformance.py --validator "./validators/shadow-score-go" -v
 
 # Test your own validator
 python tests/conformance/run_conformance.py --validator "./my-validator" -v
@@ -35,7 +35,7 @@ python tests/conformance/run_conformance.py --validator "./my-validator" -v
 
 Your validator is conformant if `run_conformance.py` reports all 18 fixtures passing. The runner checks:
 
-1. **JSON output** — `gap_score`, `level`, `sealed_tests` counts, failure count, `coverage_comparison` keys
+1. **JSON output** — `shadow_score`, `level`, `sealed_tests` counts, failure count, `coverage_comparison` keys
 2. **Exit codes** — `0` when under threshold (or no threshold), `1` when exceeded
 
 Required CLI interface:
