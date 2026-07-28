@@ -1,7 +1,7 @@
 {
-  "conformance_suite_version": "1.0.0",
-  "description": "Black-box conformance tests for Gap Score validators. Any compliant validator must produce matching output and exit codes for these fixtures.",
-  "reference_validator": "validators/gap-score.py (Python, Spec v1.0.0)",
+  "conformance_suite_version": "2.0.0",
+  "description": "Black-box conformance tests for Shadow Score validators. Any compliant validator must produce matching output and exit codes for these fixtures.",
+  "reference_validator": "validators/shadow-score.py (Python, Spec v2.0.0)",
   "fixtures": [
     {
       "id": "01-perfect-score-sealed-only",
@@ -10,9 +10,9 @@
         "sealed": "examples/01-perfect-score/sealed-results.json"
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 0.0,
+          "shadow_score": 0.0,
           "level": "perfect"
         },
         "sealed_tests": {
@@ -32,9 +32,9 @@
         "open": "examples/01-perfect-score/open-results.json"
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 0.0,
+          "shadow_score": 0.0,
           "level": "perfect"
         },
         "sealed_tests": {
@@ -80,9 +80,9 @@
         "sealed": "examples/02-minor-gaps/sealed-results.json"
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 11.1,
+          "shadow_score": 11.1,
           "level": "minor"
         },
         "sealed_tests": {
@@ -117,9 +117,9 @@
         "open": "examples/02-minor-gaps/open-results.json"
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 11.1,
+          "shadow_score": 11.1,
           "level": "minor"
         },
         "sealed_tests": {
@@ -180,9 +180,9 @@
         "sealed": "examples/03-critical-gaps/sealed-results.json"
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 60.0,
+          "shadow_score": 60.0,
           "level": "critical"
         },
         "sealed_tests": {
@@ -266,9 +266,9 @@
         "open": "examples/03-critical-gaps/open-results.json"
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 60.0,
+          "shadow_score": 60.0,
           "level": "critical"
         },
         "sealed_tests": {
@@ -380,9 +380,9 @@
         }
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 0.0,
+          "shadow_score": 0.0,
           "level": "perfect"
         },
         "sealed_tests": {
@@ -429,9 +429,9 @@
         }
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 0.0,
+          "shadow_score": 0.0,
           "level": "perfect"
         },
         "sealed_tests": {
@@ -485,9 +485,9 @@
         }
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 100.0,
+          "shadow_score": 100.0,
           "level": "critical"
         },
         "sealed_tests": {
@@ -543,9 +543,9 @@
         }
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 0.0,
+          "shadow_score": 0.0,
           "level": "perfect"
         },
         "sealed_tests": {
@@ -575,9 +575,9 @@
         }
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 100.0,
+          "shadow_score": 100.0,
           "level": "critical"
         },
         "sealed_tests": {
@@ -716,9 +716,9 @@
         }
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 15.0,
+          "shadow_score": 15.0,
           "level": "minor"
         },
         "sealed_tests": {
@@ -899,9 +899,9 @@
         }
       },
       "expected_output": {
-        "gap_score_spec_version": "1.0.0",
+        "shadow_score_spec_version": "2.0.0",
         "report": {
-          "gap_score": 16.0,
+          "shadow_score": 16.0,
           "level": "moderate"
         },
         "sealed_tests": {
@@ -944,7 +944,7 @@
     },
     {
       "id": "threshold-under",
-      "description": "11.1% gap score with --threshold 15 \u2192 exit 0",
+      "description": "11.1% shadow score with --threshold 15 \u2192 exit 0",
       "input": {
         "sealed": "examples/02-minor-gaps/sealed-results.json",
         "threshold": 15
@@ -953,7 +953,7 @@
     },
     {
       "id": "threshold-over",
-      "description": "11.1% gap score with --threshold 10 \u2192 exit 1",
+      "description": "11.1% shadow score with --threshold 10 \u2192 exit 1",
       "input": {
         "sealed": "examples/02-minor-gaps/sealed-results.json",
         "threshold": 10
@@ -962,7 +962,7 @@
     },
     {
       "id": "threshold-exact",
-      "description": "11.1% gap score with --threshold 11.1 \u2192 exit 0 (not exceeded)",
+      "description": "11.1% shadow score with --threshold 11.1 \u2192 exit 0 (not exceeded)",
       "input": {
         "sealed": "examples/02-minor-gaps/sealed-results.json",
         "threshold": 11.1
@@ -971,7 +971,7 @@
     },
     {
       "id": "threshold-zero",
-      "description": "60% gap score with --threshold 0 \u2192 exit 1",
+      "description": "60% shadow score with --threshold 0 \u2192 exit 1",
       "input": {
         "sealed": "examples/03-critical-gaps/sealed-results.json",
         "threshold": 0
@@ -980,7 +980,7 @@
     },
     {
       "id": "threshold-zero-perfect",
-      "description": "0% gap score with --threshold 0 \u2192 exit 0",
+      "description": "0% shadow score with --threshold 0 \u2192 exit 0",
       "input": {
         "sealed": "examples/01-perfect-score/sealed-results.json",
         "threshold": 0

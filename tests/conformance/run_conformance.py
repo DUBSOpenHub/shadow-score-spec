@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Conformance Test Runner for Gap Score Validators
+Conformance Test Runner for Shadow Score Validators
 
 Runs the conformance fixture suite against any validator CLI that accepts
 the same interface as the reference Python validator.
 
 Usage:
     python run_conformance.py                              # test Python validator
-    python run_conformance.py --validator "go run ../validators/gap-score.go"
-    python run_conformance.py --validator "../validators/gap-score-go"
+    python run_conformance.py --validator "go run ../validators/shadow-score.go"
+    python run_conformance.py --validator "../validators/shadow-score-go"
 
 The runner checks:
-  - JSON output matches expected fields (gap_score, level, sealed_tests, failures)
+  - JSON output matches expected fields (shadow_score, level, sealed_tests, failures)
   - Exit codes match (0 = under threshold, 1 = over threshold)
 """
 
@@ -51,16 +51,16 @@ def check_output(fixture, actual_output):
         return [f"Invalid JSON output: {e}"]
 
     # Check required top-level fields
-    for key in ["gap_score_spec_version", "report", "sealed_tests", "failures"]:
+    for key in ["shadow_score_spec_version", "report", "sealed_tests", "failures"]:
         if key not in actual:
             errors.append(f"Missing required key: {key}")
 
     # Check report values
     if "report" in actual and "report" in expected:
-        if actual["report"].get("gap_score") != expected["report"]["gap_score"]:
+        if actual["report"].get("shadow_score") != expected["report"]["shadow_score"]:
             errors.append(
-                f"gap_score: expected {expected['report']['gap_score']}, "
-                f"got {actual['report'].get('gap_score')}"
+                f"shadow_score: expected {expected['report']['shadow_score']}, "
+                f"got {actual['report'].get('shadow_score')}"
             )
         if actual["report"].get("level") != expected["report"]["level"]:
             errors.append(
@@ -140,10 +140,10 @@ def run_fixture(validator_cmd, fixture):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Gap Score Conformance Test Runner")
+    parser = argparse.ArgumentParser(description="Shadow Score Conformance Test Runner")
     parser.add_argument(
         "--validator",
-        default=f"python3 {os.path.join(REPO_ROOT, 'validators', 'gap-score.py')}",
+        default=f"python3 {os.path.join(REPO_ROOT, 'validators', 'shadow-score.py')}",
         help="Validator command to test (default: Python reference validator)",
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Show details for all fixtures")
@@ -152,7 +152,7 @@ def main():
     suite = load_fixtures()
     fixtures = suite["fixtures"]
 
-    print(f"Gap Score Conformance Suite v{suite['conformance_suite_version']}")
+    print(f"Shadow Score Conformance Suite v{suite['conformance_suite_version']}")
     print(f"Testing: {args.validator}")
     print(f"Fixtures: {len(fixtures)}")
     print()

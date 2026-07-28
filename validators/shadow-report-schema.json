@@ -1,10 +1,34 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Shadow Score Report",
-  "description": "Schema for Shadow Score reports conforming to Shadow Score Spec v1.0.0",
+  "description": "Schema for Shadow Score reports conforming to Shadow Score Spec v2.0.0",
   "type": "object",
   "required": ["shadow_score_spec_version", "report", "sealed_tests", "failures"],
   "properties": {
+    "conformance_level": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.conformance_level (SPEC.md section 5.2). At the root it is invisible to the Level 4 conditional, so an unchecked conformance claim would pass silently."
+    },
+    "independence": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.independence (SPEC.md section 5.2)"
+    },
+    "implementer_family": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.implementer_family (SPEC.md section 5.2)"
+    },
+    "seal_author_families": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.seal_author_families (SPEC.md section 5.2)"
+    },
+    "shadow_score": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.shadow_score (SPEC.md section 5.2)"
+    },
+    "advisory": {
+      "not": {},
+      "description": "MISPLACED: belongs at report.advisory (SPEC.md section 5.4)"
+    },
     "shadow_score_spec_version": {
       "type": "string",
       "description": "Version of the Shadow Score Spec this report conforms to",
@@ -41,8 +65,111 @@
         "sealed_hash": {
           "type": "string",
           "description": "SHA-256 hash of sealed test directory for tamper evidence"
+        },
+        "seal_broken": {
+          "type": "boolean",
+          "description": "True if tamper evidence or canary access indicates the seal was read or modified"
+        },
+        "conformance_level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Highest Shadow Score Spec conformance level claimed (SPEC.md section 6)"
+        },
+        "independence": {
+          "type": "string",
+          "enum": ["strong", "weak"],
+          "description": "Authorship independence class (SPEC.md section 3.6.1). Required at Level 4."
+        },
+        "implementer_family": {
+          "type": "string",
+          "description": "Model family that authored the implementation. Required at Level 4."
+        },
+        "seal_author_families": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Model families that authored the sealed suites. Required at Level 4."
+        },
+        "seal_author_models": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Specific models that authored the sealed suites"
+        },
+        "implementer_model": {
+          "type": "string",
+          "description": "Specific model that authored the implementation"
+        },
+        "workspace_isolation": {
+          "type": "string",
+          "enum": ["strict", "legacy"],
+          "description": "strict = disposable verification workspace; legacy = v1.0.0 copy-in (SPEC.md section 4.3)"
+        },
+        "spec_ambiguity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Contradiction ratio across independently authored sealed suites (SPEC.md section 4.6.2). Required when seal plurality is used."
+        },
+        "advisory": {
+          "type": "boolean",
+          "description": "True when the score is not authoritative (SPEC.md section 5.4)"
+        },
+        "advisory_reason": {
+          "type": "string",
+          "description": "Why the score is not authoritative. Required when advisory is true."
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "advisory": { "const": true } },
+            "required": ["advisory"]
+          },
+          "then": { "required": ["advisory_reason"] }
+        },
+        {
+          "if": {
+            "properties": { "conformance_level": { "const": 4 } },
+            "required": ["conformance_level"]
+          },
+          "then": {
+            "required": ["independence", "implementer_family", "seal_author_families"]
+          }
+        },
+        {
+          "properties": {
+            "seal_families": {
+              "not": {},
+              "description": "RENAMED: use seal_author_families. Rejected rather than ignored, because a silently-dropped provenance field yields a Level 4 claim that was never checked."
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "independence": { "const": "weak" } },
+            "required": ["independence"]
+          },
+          "then": {
+            "properties": { "advisory": { "const": true } },
+            "required": ["advisory", "advisory_reason"],
+            "$comment": "SPEC.md section 5.4 — weak independence MUST be reported as advisory."
+          }
+        },
+        {
+          "if": {
+            "properties": { "seal_broken": { "const": true } },
+            "required": ["seal_broken"]
+          },
+          "then": {
+            "properties": { "advisory": { "const": true } },
+            "required": ["advisory", "advisory_reason"],
+            "$comment": "SPEC.md section 5.4 — a broken seal makes the score unfalsifiable."
+          }
+        }
+      ]
     },
     "sealed_tests": {
       "type": "object",
@@ -107,7 +234,16 @@
         "cycles_completed": { "type": "integer", "minimum": 0 },
         "max_cycles": { "type": "integer", "minimum": 1 },
         "initial_shadow_score": { "type": "number", "minimum": 0, "maximum": 100 },
-        "final_shadow_score": { "type": "number", "minimum": 0, "maximum": 100 }
+        "final_shadow_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "hardening_velocity": {
+          "type": "number",
+          "description": "Points of Shadow Score recovered per hardening cycle (SPEC.md section 3.5). Required at Level 3."
+        },
+        "max_reveal": {
+          "type": "string",
+          "enum": ["count", "name", "category", "message", "assertion"],
+          "description": "Highest progressive-disclosure level reached (SPEC.md section 4.4.1). Never includes test source."
+        }
       }
     }
   },

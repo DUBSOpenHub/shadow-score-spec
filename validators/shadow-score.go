@@ -1,6 +1,6 @@
 // Shadow Score Reference Validator (Go)
 // Computes Shadow Score from test result files (JSON format).
-// Conforms to Shadow Score Spec v1.0.0.
+// Conforms to Shadow Score Spec v2.0.0.
 //
 // Usage:
 //
@@ -18,7 +18,7 @@ import (
 	"strconv"
 )
 
-const specVersion = "1.0.0"
+const specVersion = "2.0.0"
 
 var categories = []string{"happy_path", "edge_case", "error_handling", "security"}
 

@@ -1,3 +1,3 @@
-module gap-score-validator
+module shadow-score-validator
 
 go 1.21
