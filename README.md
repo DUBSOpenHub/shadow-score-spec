@@ -1,8 +1,8 @@
 # 📊 Shadow Score Spec
 
-[![Spec Version](https://img.shields.io/badge/spec-v1.0.0-blue.svg)](SPEC.md)
+[![Spec Version](https://img.shields.io/badge/spec-v2.0.0-blue.svg)](SPEC.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Conformance Levels](https://img.shields.io/badge/conformance-L1%20%7C%20L2%20%7C%20L3-green.svg)](SPEC.md#6-conformance-levels)
+[![Conformance Levels](https://img.shields.io/badge/conformance-L1%20%7C%20L2%20%7C%20L3%20%7C%20L4-green.svg)](SPEC.md#6-conformance-levels)
 
 **A framework-agnostic metric for measuring AI code generation quality.**
 
@@ -56,11 +56,11 @@ cd validators && go build -o shadow-score-go . && cd ..
 
 ### Option B: Compute it yourself
 
-1. **Write sealed tests** from your spec (requirements → test cases, before code exists)
+1. **Write sealed tests** from your spec (requirements → test cases, before code exists) — using a *different model family* than the one that will implement
 2. **Build the code** — the implementer never sees the sealed tests
-3. **Run both suites** — sealed tests and the implementer's own tests
+3. **Run both suites** — in a disposable workspace built from the implementer's commit
 4. **Compute**: `failed_sealed / total_sealed × 100`
-5. **Report**: Use the [JSON schema](validators/shadow-report-schema.json) or markdown format
+5. **Report**: Use the [JSON schema](validators/shadow-report-schema.json) or markdown format, including which families authored each side
 
 That's it. Framework, language, and tooling don't matter — Shadow Score works anywhere.
 
@@ -71,12 +71,16 @@ Shadow Score is computed using the **Sealed-Envelope Protocol** — a 4-phase te
 ```
  SPEC ──► SEAL GENERATION ──► IMPLEMENTATION ──► VALIDATION ──► HARDENING
            (tests from spec,     (code + own        (run both      (fix from
-            hidden from          tests, never       suites,       failure msgs
-            implementer)         sees sealed)       compute gap)   only — no
-                                                                  test code)
+            hidden from          tests, never       suites in a   failure msgs
+            implementer,         sees sealed)       disposable    only — no
+            different model                        workspace)     test code)
+            family)
 ```
 
-**The critical rule:** The implementer **never sees** the sealed tests. During hardening, they receive only failure messages (test name, expected, actual) — never the test source code. This forces root-cause fixes, not test-targeting hacks.
+**The two critical rules:**
+
+1. **Isolation** — the implementer **never sees** the sealed tests. During hardening it receives only failure messages (test name, expected, actual), never test source. This forces root-cause fixes, not test-targeting hacks.
+2. **Independence** — the sealed tests are written by a **different model family** than the implementation. Isolation stops the builder seeing the tests; it does not stop it thinking like their author. Same-family agents share blind spots, so the scenario nobody tested is the scenario nobody handled.
 
 Full protocol details: [**SPEC.md §4**](SPEC.md#4-sealed-envelope-protocol)
 
@@ -87,10 +91,13 @@ Full protocol details: [**SPEC.md §4**](SPEC.md#4-sealed-envelope-protocol)
 | **L1** — Shadow Score | Compute + report Shadow Score | Retrofitting onto existing test suites |
 | **L2** — Sealed Envelope | L1 + test isolation + tamper hash | AI agent pipelines |
 | **L3** — Full Protocol | L2 + hardening loop + velocity tracking | Production autonomous builds |
+| **L4** — Adversarial Independence | L3 + cross-family authorship + disposable verify workspace + provenance in report | Published or gate-blocking scores |
+
+**Why L4 exists:** L1–L3 harden *information* isolation — they stop the builder from **seeing** the tests. They are all silently defeated by one configuration choice: pointing the seal author and the implementer at the same model. Same-family agents share blind spots, so the untested defect is also the unhandled defect. The sealed test is never written, the score reads 0%, and the bug ships green. That bias is directional — it always overclaims quality. See [**SPEC.md §3.6**](SPEC.md#36-authorship-independence).
 
 ## Reference Implementations
 
-The reference Level 3 implementation is **[Dark Factory](https://github.com/DUBSOpenHub/dark-factory)** — an autonomous agentic build system for the GitHub Copilot CLI with sealed-envelope testing.
+The reference Level 4 implementation is **[Dark Factory](https://github.com/DUBSOpenHub/dark-factory)** — an autonomous agentic build system for the GitHub Copilot CLI with sealed-envelope testing, cross-family model independence enforced pre-dispatch, and seal plurality.
 
 The reference Level 2 implementation is **[Terminal Stampede](https://github.com/DUBSOpenHub/terminal-stampede)** — a parallel agent runtime that shadow-scores each agent's work during merge using sealed tests with tamper-hash verification.
 
@@ -110,10 +117,15 @@ Shadow Reports can be produced in JSON (machine-readable) or Markdown (human-rea
 
 ```json
 {
-  "shadow_score_spec_version": "1.0.0",
+  "shadow_score_spec_version": "2.0.0",
   "report": {
     "shadow_score": 11.1,
-    "level": "minor"
+    "level": "minor",
+    "conformance_level": 4,
+    "independence": "strong",
+    "implementer_family": "anthropic",
+    "seal_author_families": ["openai", "google"],
+    "workspace_isolation": "strict"
   },
   "sealed_tests": { "total": 18, "passed": 16, "failed": 2 },
   "failures": [
@@ -128,13 +140,15 @@ Shadow Reports can be produced in JSON (machine-readable) or Markdown (human-rea
 }
 ```
 
+A Shadow Score without provenance cannot be interpreted: 0% under `strong` independence and 0% under `weak` independence are different claims about the world, and only one of them is evidence.
+
 Full schema: [**SPEC.md §5**](SPEC.md#5-reporting-format)
 
 ## Adopters
 
 | Project | Conformance | Description |
 |---------|-------------|-------------|
-| [Dark Factory](https://github.com/DUBSOpenHub/dark-factory) | Level 3 | Reference implementation — autonomous agentic build system |
+| [Dark Factory](https://github.com/DUBSOpenHub/dark-factory) | Level 4 | Reference implementation — autonomous agentic build system with cross-family adversarial independence |
 | [Terminal Stampede](https://github.com/DUBSOpenHub/terminal-stampede) | Level 2 | Parallel agent runtime — shadow-scores each agent's work during merge via sealed tests |
 
 *Using Shadow Score? [Open a PR](https://github.com/DUBSOpenHub/shadow-score-spec/pulls) to add your project.*
