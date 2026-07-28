@@ -3,7 +3,7 @@
 Shadow Score Reference Validator
 
 Computes Shadow Score from test result files (JSON format).
-Conforms to Shadow Score Spec v1.0.0.
+Conforms to Shadow Score Spec v2.0.0.
 
 Usage:
     python shadow-score.py --sealed sealed-results.json --open open-results.json
@@ -24,7 +24,7 @@ import json
 import sys
 from pathlib import Path
 
-SPEC_VERSION = "1.0.0"
+SPEC_VERSION = "2.0.0"
 
 CATEGORIES = ["happy_path", "edge_case", "error_handling", "security"]
 
@@ -122,7 +122,7 @@ def build_report(sealed: list[dict], open_tests: list[dict] | None = None) -> di
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Shadow Score Reference Validator (Spec v1.0.0)"
+        description="Shadow Score Reference Validator (Spec v2.0.0)"
     )
     parser.add_argument("--sealed", required=True, help="Path to sealed test results JSON")
     parser.add_argument("--open", help="Path to open test results JSON (optional)")

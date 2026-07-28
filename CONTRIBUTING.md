@@ -1,6 +1,6 @@
-# Contributing to Gap Score Spec
+# Contributing to Shadow Score Spec
 
-Thank you for your interest in contributing to the Gap Score Specification! This is an open specification and contributions are welcome.
+Thank you for your interest in contributing to the Shadow Score Specification! This is an open specification and contributions are welcome.
 
 ## How to Contribute
 
@@ -19,13 +19,13 @@ Reference validators in additional languages are welcome. PRs for Go, Rust, Type
 Requirements for new validators:
 - Must conform to the current spec version
 - Must handle the same input format as the existing validators (or document differences)
-- Must produce output conforming to `validators/gap-report-schema.json`
+- Must produce output conforming to `validators/shadow-report-schema.json`
 - Must include unit tests
 - Must pass against all examples in `examples/`
 
 ### Adopter Listings
 
-If you're using Gap Score in your project, add it to the Adopters table in `README.md`:
+If you're using Shadow Score in your project, add it to the Adopters table in `README.md`:
 
 1. Fork the repository
 2. Add your project to the table with conformance level and description
@@ -41,14 +41,14 @@ Found an inconsistency, typo, or bug in a validator? Open an issue with:
 ## Development Setup
 
 ```bash
-git clone https://github.com/DUBSOpenHub/gap-score-spec.git
-cd gap-score-spec
+git clone https://github.com/DUBSOpenHub/shadow-score-spec.git
+cd shadow-score-spec
 
 # Run the validator unit tests
-python -m pytest validators/test_gap_score.py -v
+python -m pytest validators/test_shadow_score.py -v
 
 # Run a validator against an example
-python validators/gap-score.py \
+python validators/shadow-score.py \
   --sealed examples/02-minor-gaps/sealed-results.json \
   --open examples/02-minor-gaps/open-results.json \
   --format summary
